@@ -27,6 +27,20 @@ def pl_const(token):
     raise MisMatch
  return ret
   
+class Comment(str): pass
+
+def token_comment_c(text):
+ cs='/*'
+ ce='*/'
+ if text.startswith(cs):
+  end= text.find(ce);
+  if end==-1:
+   return (Comment(text),'')
+  else:
+   cut= end+len(ce)
+   return (Comment(text[:cut]),text[cut:])
+ raise MisMatch
+
 
 
 if __name__=='__main__':

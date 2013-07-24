@@ -19,6 +19,40 @@ def pl_or(f1,f2):
   raise MisMatch
  return ret
 
+def pl_link(f1,f2):
+ def ret(text):
+  rf1,txttail1= f1(text)
+  rf2,txttail2= f2(txttail1)
+  return ((rf1,rf2),txttail2)
+ return ret
+
+''' not use :
+def pl_mult(fn):
+ def ret(text):
+  col=[]
+  cut=0
+  with try_match():
+   tail= text[cut:]
+   tmp= fn(text)
+   col.append(tmp[0])
+   cut+=tmp[1]
+  return (col,text[cut:])
+ return ret
+'''
+
+def pl_mult(fn,cls=list):
+ def token_fn(text):
+  clo= cls()
+  tmptxt= text
+  with try_match():
+   while True:
+    tmpret= fn(tmptxt)
+    clo.append(tmpret[0])
+    tmptxt= tmpret[1]
+  return (tuple(clo),tmptxt)
+ return token_fn
+
+
 def pl_const(token):
  def ret(text):
   if text.startswith(token):
@@ -27,6 +61,18 @@ def pl_const(token):
     raise MisMatch
  return ret
   
+#def pl_any_char(chars):
+# if len(chars)==0: raise MisMatch
+# return pl_or(pl_const(chars[0]),pl_any_char(chars[1:]))
+
+def pl_any_char(chars):
+ def ret(text):
+  if len(text)==0: raise MisMatch
+  elif text[0] not in chars: raise MisMatch
+  else: return (text[0],text[1:])
+ return ret
+
+
 class Space(str): pass
 class Comment(Space): pass
 
@@ -85,6 +131,7 @@ def token_space(text):
  else:
   return (Space(text[:cut]),text[cut:])
 
+
 if __name__=='__main__':
  '''test case'''
  match_123= pl_const('123')
@@ -94,3 +141,4 @@ if __name__=='__main__':
  print('comment',token_comment('/*123*/456'))
  print('comment',token_comment('//123\n456'))
  print('space',token_space(' //line1\n \t\t/*line2*/ 456'))
+ print('n*',pl_mult(match_123)("123123123456"))

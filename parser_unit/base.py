@@ -14,6 +14,16 @@ def pl_may(fn):
    return rf
  return ret
 
+def pl_until(fn):
+ def ret(text):
+  cut=0
+  while cut<=len(text):
+   if fn(text[cut:])!=None:
+    return (text[:cut],text[cut:])
+   cut+=1
+  return None
+ return ret
+
 def pl_link(*fn):
  def ret(text):
   rfn=[]
@@ -65,6 +75,12 @@ def _link_str(tuple_):
   return ret
  else:
   return tuple_
+
+def _prettyprint(rf):
+ if rf==None:
+  return None
+ else:
+  return (_link_str(rf[0]),rf[1])
 
 def token_comment_c(text):
  cs='/*'
@@ -129,16 +145,15 @@ token_spacen= pl_or(token_space,token_newline)
 _EN_set= 'abcdefghijklmnopqrstuvwxyz'
 _symbol_char_start= '_'+_EN_set+_EN_set.upper()
 _symbol_num= '0123456789'
-_token_symbol_unprettyprint= pl_link(pl_any_char(_symbol_char_start),pl_mult(pl_any_char(_symbol_char_start+_symbol_num)))
-def token_symbol(text):
- '[_a-zA-Z][_a-zA-Z0-9]*'
- tmp= _token_symbol_unprettyprint(text)
- if tmp==None:
-  return None
- else:
-  return (_link_str(tmp[0]),tmp[1])
 
-#ln_define= pl_link(pl_const('#define'),token_space,token_symbol,pl_may(pl_link(token_space,token_exp)),token_spacen)
+'symbol:[_a-zA-Z][_a-zA-Z0-9]*'
+_token_symbol_unprettyprint= pl_link(pl_any_char(_symbol_char_start),pl_mult(pl_any_char(_symbol_char_start+_symbol_num)))
+r'num:[0-9]*\.[0-9]*(e|E)[0-9]*'
+_token_num_unprettyprint= pl_link(pl_any_char(_symbol_num),pl_any_char('.'),pl_any_char(_symbol_num),pl_any_char('eE'),pl_any_char(_symbol_num))
+def token_symbol(text):
+ return _prettyprint(_token_symbol_unprettyprint(text))
+
+ln_define= pl_link(pl_const('#define'),token_space,token_symbol,pl_may(pl_until(pl_any_char('\n'))),pl_any_char('\n'))
 '#define symbol( exp)? newline'
  
 
@@ -153,4 +168,7 @@ if __name__=='__main__':
  print('space',token_space(' //line1\n \t\t/*line2*/ 456'))
  print('n*',pl_mult(match_123)("123123123456"))
  print('symbol',token_symbol("_as012df=self"))
+ print('until',pl_until(pl_const('456'))("123456"))
+ print('#define',ln_define("#define D\n456"))
+ print('#define',ln_define("#define A 20\n456"))
  

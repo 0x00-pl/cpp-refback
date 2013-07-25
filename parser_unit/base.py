@@ -1,74 +1,57 @@
 from contextlib import contextmanager
 
-class ValueWarning(Warning): pass
-class MisMatch(ValueWarning): pass
-
-@contextmanager
-def try_match():
- try:
-  yield
- except MisMatch:
-  pass
-
 def pl_or(f1,f2):
  def ret(text):
-  with try_match():
-   return f1(text)
-  with try_match():
-   return f2(text)
-  raise MisMatch
+  return f1(text) or f2(text)
  return ret
 
+''' not use
 def pl_link(f1,f2):
  def ret(text):
-  rf1,txttail1= f1(text)
-  rf2,txttail2= f2(txttail1)
-  return ((rf1,rf2),txttail2)
- return ret
-
-''' not use :
-def pl_mult(fn):
- def ret(text):
-  col=[]
-  cut=0
-  with try_match():
-   tail= text[cut:]
-   tmp= fn(text)
-   col.append(tmp[0])
-   cut+=tmp[1]
-  return (col,text[cut:])
+  rf1= f1(text)
+  if rf1==None: return None
+  rf2= f2(rf1[1])
+  if rf2==None: return None
+  return ((rf1[0],rf2[0]),rf2[1])
  return ret
 '''
 
-def pl_mult(fn,cls=list):
- def token_fn(text):
-  clo= cls()
-  tmptxt= text
-  with try_match():
-   while True:
-    tmpret= fn(tmptxt)
-    clo.append(tmpret[0])
-    tmptxt= tmpret[1]
-  return (tuple(clo),tmptxt)
- return token_fn
+def pl_link(*fn):
+ def ret(text):
+  rfn=[]
+  txttail=text
+  for fi in fn:
+   rfi= fi(txttail)
+   if rfi==None: return None
+   rfn.append(rfi[0])
+   txttail= rfi[1]
+  return (tuple(rfn),txttail)
+ return ret
 
+def pl_mult(fn):
+ def ret(text):
+  rfn=[]
+  txttail=text
+  while True:
+   rfi= fn(txttail)
+   if rfi==None: break
+   rfn.append(rfi[0])
+   txttail= rfi[1]
+  return (tuple(rfn),txttail)
+ return ret
 
 def pl_const(token):
  def ret(text):
   if text.startswith(token):
     return (token,text[len(token):])
   else:
-    raise MisMatch
+    return None
  return ret
-  
-#def pl_any_char(chars):
-# if len(chars)==0: raise MisMatch
-# return pl_or(pl_const(chars[0]),pl_any_char(chars[1:]))
 
 def pl_any_char(chars):
  def ret(text):
-  if len(text)==0: raise MisMatch
-  elif text[0] not in chars: raise MisMatch
+  if len(text)==0: return None
+  elif text[0] not in chars: return None
   else: return (text[0],text[1:])
  return ret
 
@@ -86,7 +69,8 @@ def token_comment_c(text):
   else:
    cut= end+len(ce)
    return (Comment(text[:cut]),text[cut:])
- raise MisMatch
+ else:
+  return None
 
 def token_comment_cxx(text):
  cs='//'
@@ -98,28 +82,30 @@ def token_comment_cxx(text):
   else:
    cut= end+len(ce)
    return (Comment(text[:cut]),text[cut:])
- raise MisMatch
+ else:
+  return None
 
 token_comment= pl_or(token_comment_c,token_comment_cxx)
 
-def _isspace(text,n):
- return text.startswith(' ',n) or\
-        text.startswith('\t',n) or\
-        text.startswith('\n',n)
 
 def token_space_only(text):
+ def _isspace(text,n):
+  return text.startswith(' ',n) or\
+         text.startswith('\t',n) or\
+         text.startswith('\n',n)
  cut=0
  while _isspace(text,cut):
   cut+=1
  if cut==0:
-  raise MisMatch
+  return None
  else:
   return (Space(text[:cut]),text[cut:])
 
 token_space_once= pl_or(token_space_only,token_comment)
 
+''' not use
 def token_space(text):
- '''match [space \t \n comment]*'''
+ 'match [space \t \n comment]*'
  cut=0
  with try_match():
   while True:
@@ -130,7 +116,20 @@ def token_space(text):
   raise MisMatch
  else:
   return (Space(text[:cut]),text[cut:])
-
+'''
+def token_space(text):
+ r'match [space \t \n comment]*'
+ rfn=''
+ txttail=text
+ while True:
+  rfi= token_space_once(txttail)
+  if rfi==None: break
+  rfn+=rfi[0]
+  txttail=rfi[1]
+ if len(rfn)==0: 
+  return None
+ else: 
+  return (rfn,txttail)
 
 if __name__=='__main__':
  '''test case'''

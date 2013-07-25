@@ -5,16 +5,14 @@ def pl_or(f1,f2):
   return f1(text) or f2(text)
  return ret
 
-''' not use
-def pl_link(f1,f2):
+def pl_may(fn):
  def ret(text):
-  rf1= f1(text)
-  if rf1==None: return None
-  rf2= f2(rf1[1])
-  if rf2==None: return None
-  return ((rf1[0],rf2[0]),rf2[1])
+  rf= fn(text)
+  if rf==None:
+   return (tuple(),text)
+  else:
+   return rf
  return ret
-'''
 
 def pl_link(*fn):
  def ret(text):
@@ -59,6 +57,15 @@ def pl_any_char(chars):
 class Space(str): pass
 class Comment(Space): pass
 
+def _link_str(tuple_):
+ if isinstance(tuple_,(tuple,list)):
+  ret=''
+  for iter in tuple_:
+   ret+=_link_str(iter) 
+  return ret
+ else:
+  return tuple_
+
 def token_comment_c(text):
  cs='/*'
  ce='*/'
@@ -87,12 +94,10 @@ def token_comment_cxx(text):
 
 token_comment= pl_or(token_comment_c,token_comment_cxx)
 
-
 def token_space_only(text):
  def _isspace(text,n):
   return text.startswith(' ',n) or\
-         text.startswith('\t',n) or\
-         text.startswith('\n',n)
+         text.startswith('\t',n)
  cut=0
  while _isspace(text,cut):
   cut+=1
@@ -101,22 +106,8 @@ def token_space_only(text):
  else:
   return (Space(text[:cut]),text[cut:])
 
-token_space_once= pl_or(token_space_only,token_comment)
+token_space_once= pl_or(token_space_only,token_comment_c)
 
-''' not use
-def token_space(text):
- 'match [space \t \n comment]*'
- cut=0
- with try_match():
-  while True:
-   tmptxt= text[cut:]
-   tmpret= token_space_once(tmptxt)
-   cut+= len(tmpret[0])
- if cut==0:
-  raise MisMatch
- else:
-  return (Space(text[:cut]),text[cut:])
-'''
 def token_space(text):
  r'match [space \t \n comment]*'
  rfn=''
@@ -131,6 +122,26 @@ def token_space(text):
  else: 
   return (rfn,txttail)
 
+token_newline= pl_or(pl_const('\n'),token_comment_cxx)
+
+token_spacen= pl_or(token_space,token_newline)
+
+_EN_set= 'abcdefghijklmnopqrstuvwxyz'
+_symbol_char_start= '_'+_EN_set+_EN_set.upper()
+_symbol_num= '0123456789'
+_token_symbol_unprettyprint= pl_link(pl_any_char(_symbol_char_start),pl_mult(pl_any_char(_symbol_char_start+_symbol_num)))
+def token_symbol(text):
+ '[_a-zA-Z][_a-zA-Z0-9]*'
+ tmp= _token_symbol_unprettyprint(text)
+ if tmp==None:
+  return None
+ else:
+  return (_link_str(tmp[0]),tmp[1])
+
+#ln_define= pl_link(pl_const('#define'),token_space,token_symbol,pl_may(pl_link(token_space,token_exp)),token_spacen)
+'#define symbol( exp)? newline'
+ 
+
 if __name__=='__main__':
  '''test case'''
  match_123= pl_const('123')
@@ -141,3 +152,5 @@ if __name__=='__main__':
  print('comment',token_comment('//123\n456'))
  print('space',token_space(' //line1\n \t\t/*line2*/ 456'))
  print('n*',pl_mult(match_123)("123123123456"))
+ print('symbol',token_symbol("_as012df=self"))
+ 

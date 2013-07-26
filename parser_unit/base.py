@@ -181,13 +181,19 @@ _stmt_define_unprettyprint= pl_link(pl_const('#define'),token_space,token_symbol
 _stmt_define_unprettyprint.__doc__=r'#define symbol( exp)?\n'
 def stmt_define(text):
  tmp= _stmt_define_unprettyprint(text)
- return (('#define',tmp[0][2],token_space(' '+tmp[0][3])[1]),tmp[1])
+ return tmp and (('#define',tmp[0][2],token_space(' '+tmp[0][3])[1]),tmp[1])
 
 _stmt_include_unprettyprint= pl_link(pl_const('#include'),pl_until(token_newline),token_newline)
 _stmt_include_unprettyprint.__doc__=r'#include .* newline'
 def stmt_include(text):
  tmp= _stmt_include_unprettyprint(text)
- return (('#include',token_space(' '+tmp[0][1])[1]or''),tmp[1])
+ return tmp and (('#include',token_space(' '+tmp[0][1])[1]or''),tmp[1])
+
+_stmt_usingnamespace= pl_link(pl_const('using namespace'),pl_until(pl_any_char(';')),pl_any_char(';'),token_spacen)
+def stmt_usingnamespace(text):
+ 'using-namespace:using namespace .* ; SPACEN'
+ tmp= _stmt_usingnamespace(text)
+ return tmp and (('using namespace',token_space(' '+tmp[0][1])[1]),tmp[1])
 
 if __name__=='__main__':
  '''test case'''
@@ -199,7 +205,7 @@ if __name__=='__main__':
  print('n*',pl_mult(match_123)('123123123456'))
  print('comment',token_comment('/*123*/456'))
  print('comment',token_comment('//123\n456'))
- print('space',token_space(' //line1\n \t\t/*line2*/ 456'))
+ print('space*',pl_mult(token_spacen)(' //line1\n \t\t/*line2*/ 456'))
  print('symbol',token_symbol('_as012df=self'))
  print('number',token_num('12.34e56E456'))
  print('number',token_num('0x123x456'))
@@ -207,4 +213,5 @@ if __name__=='__main__':
  print('#define',stmt_define('#define A 20\n456'))
  print('#include',stmt_include('#include<iostream>/*TODO fix*/ //123\n456'))
  print('#include',stmt_include('#include /*000*/"stdio.h"//123\n456'))
+ print('using-namespace',stmt_usingnamespace('using namespace std;\n456'))
  

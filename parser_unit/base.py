@@ -179,7 +179,7 @@ _token_symbol_unprettyprint.__doc__='symbol:[_a-zA-Z][_a-zA-Z0-9]*'
 _token_num_dec_dot= pl_link(pl_any_char('.'),pl_mult(pl_any_char(_symbol_num)))
 _token_num_dec_e= pl_link(pl_any_char('eE'),pl_mult(pl_any_char(_symbol_num)))
 _token_num_dec_unprettyprint= pl_link(pl_any_char(_symbol_num),pl_mult(pl_any_char(_symbol_num)),pl_may(_token_num_dec_dot),pl_may(_token_num_dec_e))
-_token_num_dec_unprettyprint.__doc__=r'num-dec:[0-9]*(\.[0-9]*)?(e|E)[0-9]*'
+_token_num_dec_unprettyprint.__doc__=r'num-dec:[0-9]+(\.[0-9]*)?((e|E)[0-9]*)?'
 
 _token_num_hex_unprettyprint= pl_link(pl_const('0x'),pl_mult(pl_any_char(_symbol_num_0x)))
 _token_num_hex_unprettyprint.__doc__=r'num-hex:0x[0-9a-fA-F]*'

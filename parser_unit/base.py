@@ -5,6 +5,14 @@ def pl_or(f1,f2):
   return f1(text) or f2(text)
  return ret
 
+def pl_orn(*fn):
+ def ret(text):
+  for fi in fn:
+   tmp= fi(text)
+   if tmp!=None: return tmp
+  return None
+ return ret
+
 def pl_may(fn):
  def ret(text):
   rf= fn(text)
@@ -228,26 +236,6 @@ def token_str(text):
 token= pl_or(pl_or(token_str,token_op),pl_or(token_num,token_symbol))
 
 
-'''stmt'''
-
-_stmt_define_unprettyprint= pl_link(pl_const('#define'),token_space,token_symbol,pl_may(pl_until(pl_any_char('\n'))),pl_any_char('\n'))
-_stmt_define_unprettyprint.__doc__=r'#define symbol( exp)?\n'
-def stmt_define(text):
- tmp= _stmt_define_unprettyprint(text)
- return tmp and (('#define',tmp[0][2],token_space(' '+tmp[0][3])[1]),tmp[1])
-
-_stmt_include_unprettyprint= pl_link(pl_const('#include'),pl_until(token_newline),token_newline)
-_stmt_include_unprettyprint.__doc__=r'#include .* newline'
-def stmt_include(text):
- tmp= _stmt_include_unprettyprint(text)
- return tmp and (('#include',token_space(' '+tmp[0][1])[1]or''),tmp[1])
-
-_stmt_usingnamespace= pl_link(pl_const('using namespace'),pl_until(pl_any_char(';')),pl_any_char(';'),token_spacen)
-def stmt_usingnamespace(text):
- 'using-namespace:using namespace .* ; SPACEN'
- tmp= _stmt_usingnamespace(text)
- return tmp and (('using namespace',token_space(' '+tmp[0][1])[1]),tmp[1])
-
 def lexpl(text):
  if not text.startswith('('): return None
  collect=[]
@@ -268,17 +256,53 @@ def lexpl(text):
    return (tuple(collect),iter[1:])
   else: print('ERROR: you may never go here')
 
-'''TODO
+
+'''stmt'''
+
+_stmt_define_unprettyprint= pl_link(pl_const('#define'),token_space,token_symbol,pl_may(pl_until(pl_any_char('\n'))),pl_any_char('\n'))
+_stmt_define_unprettyprint.__doc__=r'#define symbol( exp)?\n'
+def stmt_define(text):
+ tmp= _stmt_define_unprettyprint(text)
+ return tmp and (('#define',tmp[0][2],token_space(' '+tmp[0][3])[1]),tmp[1])
+
+_stmt_include_unprettyprint= pl_link(pl_const('#include'),pl_until(token_newline),token_newline)
+_stmt_include_unprettyprint.__doc__=r'#include .* newline'
+def stmt_include(text):
+ tmp= _stmt_include_unprettyprint(text)
+ return tmp and (('#include',token_space(' '+tmp[0][1])[1]or''),tmp[1])
+
+_stmt_usingnamespace= pl_link(pl_const('using namespace'),pl_until(pl_any_char(';')),pl_any_char(';'),token_spacen)
+def stmt_usingnamespace(text):
+ 'using-namespace:using namespace .* ; SPACEN'
+ tmp= _stmt_usingnamespace(text)
+ return tmp and (('using namespace',token_space(' '+tmp[0][1])[1]),tmp[1])
+
+def stmt_other(text):
+ tmp= pl_mult_until(token,pl_any_char(';{}'))
+ if tmp==None: return None
+ if not tmp[1].startwith(';'): return None
+ return (tmp[0]+';',)
+
 def bloc(text):
  if not text.startswith('{'): return None
- tmp= pl_mult(stmt)(text[1:])
- if not text.startswith('}'): return None
- return tmp and (tmp[0],tmp[1][1:])
+ tmp= pl_mult_unitl(stmt,pl_any_char('}'))(text[1:])
+ if tmp==None: return None
+ nln= pl_link(pl_any_char('}'),token_spacen)(tmp[1])
+ return nln and (tmp[0]+nln[0],nln[1])
 
+'''TODO
 def stmt_if(text):
  if not text.startswith('if'): return None
  tmp= pl_link(token_spacen)
 '''
+stmt= pl_orn(\
+  stmt_define,\
+  stmt_include,\
+  stmt_usingnamespace,\
+  stmt_other,\
+  bloc)
+
+
 if __name__=='__main__':
  '''test case'''
  match_123= pl_const('123')
@@ -304,4 +328,5 @@ if __name__=='__main__':
  print('using-namespace',stmt_usingnamespace('using namespace std;\n456'))
  print('token',pl_mult(token)('(abc+42)'))
  print('(exp)',lexpl('(abc+42)456'))
+ print('stmt',stmt('#include<iostream> \n int a=0;'))
  

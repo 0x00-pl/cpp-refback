@@ -80,12 +80,18 @@ def pl_const(token):
     return None
  return ret
 
-def pl_any_char(chars):
- def ret(text):
-  if len(text)==0: return None
-  elif text[0] not in chars: return None
-  else: return (text[0],text[1:])
- return ret
+def pl_any_char(chars=None):
+ if chars==None:
+  def ret(text):
+   if len(text)==0: return None
+   return (text[0],text[1:])
+  return ret
+ else:
+  def ret(text):
+   if len(text)==0: return None
+   elif text[0] not in chars: return None
+   else: return (text[0],text[1:])
+  return ret
 
 
 class Space(str): pass
@@ -194,7 +200,32 @@ def token_num(text):
 
 token_op= pl_any_char('()[]{}<>=+-*/%!~^&|?:,')
 
-token= pl_or(token_op,pl_or(token_num,token_symbol))
+def token_char(text):
+ if not text.startswith("'"): return None
+ try:
+  if text[1]=='\\':
+   if text[3]=="'": return (text[:4],text[4:])
+   else: return None
+  else:
+   if text[2]=="'": return (text[:3],text[3:])
+   else: return None
+ except IndexError:
+  return None
+
+def token_str(text):
+ if not text.startswith('"'): return token_char(text)
+ cut=1
+ while cut<=len(text):
+  if text.startswith('"',cut):
+   cut+=1
+   return (text[:cut],text[cut:])
+  elif text.startswith('\\',cut):
+   cut+=2
+  else:
+   cut+=1
+ return None
+
+token= pl_or(pl_or(token_str,token_op),pl_or(token_num,token_symbol))
 
 
 '''stmt'''
@@ -264,11 +295,13 @@ if __name__=='__main__':
  print('number',token_num('12.34e56E456'))
  print('number',token_num('0x123x456'))
  print('number',token_num('123-456'))
+ print('char',token_str(r"'\''456"))
+ print('str',token_str(r'"12\"3"456'))
  print('#define',stmt_define('#define D\n456'))
  print('#define',stmt_define('#define A 20\n456'))
  print('#include',stmt_include('#include<iostream>/*TODO fix*/ //123\n456'))
  print('#include',stmt_include('#include /*000*/"stdio.h"//123\n456'))
  print('using-namespace',stmt_usingnamespace('using namespace std;\n456'))
- print('token',pl_mult(token)('(a+b*(1e3+(1-2))%c/d^(0.5*e))456'))
- print('(exp)',lexpl('(a+b*(1e3+(1-2))%c/d^(0.5*e))456'))
+ print('token',pl_mult(token)('(abc+42)'))
+ print('(exp)',lexpl('(abc+42)456'))
  

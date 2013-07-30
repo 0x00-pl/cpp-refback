@@ -126,7 +126,7 @@ def token_comment_c(text):
  cs='/*'
  ce='*/'
  if text.startswith(cs):
-  end= text.find(ce);
+  end= 2+text[2:].find(ce);
   if end==-1:
    return (Comment(text),'')
   else:
@@ -206,7 +206,7 @@ def token_symbol(text):
 def token_num(text):
  return _prettyprint(_token_num_unprettyprint(text))
 
-token_op= pl_any_char('()[]{}<>=+-*/%!~^&|?:,')
+token_op= pl_any_char('()[]{}<>=+-*/%!~^&|?:,.')
 
 def token_char(text):
  if not text.startswith("'"): return None
@@ -233,7 +233,7 @@ def token_str(text):
    cut+=1
  return None
 
-token= pl_or(pl_or(token_str,token_op),pl_or(token_num,token_symbol))
+token= pl_orn(token_spacen,token_str,token_op,token_num,token_symbol)
 
 
 def lexpl(text):
@@ -271,24 +271,42 @@ def stmt_include(text):
  tmp= _stmt_include_unprettyprint(text)
  return tmp and (('#include',token_space(' '+tmp[0][1])[1]or''),tmp[1])
 
+
 _stmt_usingnamespace= pl_link(pl_const('using namespace'),pl_until(pl_any_char(';')),pl_any_char(';'),token_spacen)
 def stmt_usingnamespace(text):
  'using-namespace:using namespace .* ; SPACEN'
  tmp= _stmt_usingnamespace(text)
  return tmp and (('using namespace',token_space(' '+tmp[0][1])[1]),tmp[1])
 
+def stmt_dowhile(text):
+ tmp= pl_link(\
+       pl_const('do'),\
+       pl_may(token_spacen),\
+       bloc,\
+       pl_may(token_spacen),
+       pl_const('while'),\
+       lexpl,\
+       pl_may(pl_any_char(';')),\
+       pl_may(token_spacen))(text)
+ return tmp
+
 def stmt_other(text):
- tmp= pl_mult_until(token,pl_any_char(';{}'))
+ tmp= pl_mult_until(token,pl_any_char(';{'))(text)
  if tmp==None: return None
- if not tmp[1].startwith(';'): return None
- return (tmp[0]+';',)
+ if tmp[1].startswith(';'):
+  return (tmp[0]+(';',),tmp[1][1:])
+ elif tmp[1].startswith('{'):
+  rbloc= bloc(tmp[1])
+  return rbloc and (tmp[0]+(rbloc[0],),token_spacen(' '+rbloc[1])[1])
+ else:
+  return None
 
 def bloc(text):
  if not text.startswith('{'): return None
- tmp= pl_mult_unitl(stmt,pl_any_char('}'))(text[1:])
+ tmp= pl_mult_until(stmt,pl_any_char('}'))(text[1:])
  if tmp==None: return None
- nln= pl_link(pl_any_char('}'),token_spacen)(tmp[1])
- return nln and (tmp[0]+nln[0],nln[1])
+ nln= pl_link(pl_any_char('}'),pl_may(token_spacen))(tmp[1])
+ return nln and (tmp[0],nln[1])
 
 '''TODO
 def stmt_if(text):
@@ -296,9 +314,10 @@ def stmt_if(text):
  tmp= pl_link(token_spacen)
 '''
 stmt= pl_orn(\
+  token_spacen,\
   stmt_define,\
   stmt_include,\
-  stmt_usingnamespace,\
+  stmt_dowhile,\
   stmt_other,\
   bloc)
 
@@ -329,4 +348,51 @@ if __name__=='__main__':
  print('token',pl_mult(token)('(abc+42)'))
  print('(exp)',lexpl('(abc+42)456'))
  print('stmt',stmt('#include<iostream> \n int a=0;'))
+ print('final-test',pl_mult(stmt)(r'''
+#include<typeinfo>
+#include<iostream>
+#include<string>
+using namespace std;
+
+/*//comment//*/
+/*commen
+comment
+//comment*/
+//comment/*
+
+template<typename T>
+class my_hello{
+public:
+ my_hello(const T& _nm):name(_nm){}
+ virtual string get(){return typeid(name).name();}
+ operator const string&(){return get();}
+ T name;
+};
+template<>
+class my_hello<string>{
+public:
+ my_hello(const string& _nm):name(_nm){}
+ virtual const string& get(){return name;}
+ operator const string&(){return get();}
+ string name;
+};
+class my_hello_123: public my_hello<string>{
+public:
+ my_hello_123():my_hello("world"){}
+ virtual const string& get(){
+  return string("hello ")+my_hello::get();
+ }
+ static my_hello_123* instance(){
+  static my_hello_123* _ins=0;
+  if(!_ins){ins=new my_hello_123();}
+  return _ins;
+ }
+};
+
+int main(int argc, char** argv){
+ cout<< *my_hello_123::instance()<< endl;
+ return 0;
+}
+ '''))
+
  

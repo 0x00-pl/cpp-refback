@@ -30,6 +30,15 @@ def pl_not(fn):
    return None
  return ret
 
+def pl_not_zero(fn):
+ def ret(text):
+  tmp= fn(text)
+  if tmp==None or len(tmp[0])==0:
+   return None
+  else:
+   return tmp
+ return ret
+
 def pl_until(fn):
  def ret(text):
   cut=0
@@ -100,6 +109,12 @@ def pl_any_char(chars=None):
    elif text[0] not in chars: return None
    else: return (text[0],text[1:])
   return ret
+
+def pl_ignore_data(fn):
+ def ret(text):
+  tmp= fn(text)
+  return tmp and ((),tmp[1])
+ return ret
 
 
 class Space(str): pass
@@ -180,7 +195,9 @@ def token_space(text):
 
 token_newline= pl_or(pl_const('\n'),token_comment_cxx)
 
-token_spacen= pl_or(token_space,token_newline)
+def token_spacen(text):
+ tmp= pl_mult(pl_or(token_space,token_newline))(text)
+ return tmp and (_link_str(tmp[0]),tmp[1])
 
 _EN_set= 'abcdefghijklmnopqrstuvwxyz'
 _symbol_char_start= '_'+_EN_set+_EN_set.upper()
@@ -233,7 +250,7 @@ def token_str(text):
    cut+=1
  return None
 
-token= pl_orn(token_spacen,token_str,token_op,token_num,token_symbol)
+token= pl_orn(pl_ignore_data(pl_not_zero(token_spacen)),token_str,token_op,token_num,token_symbol)
 
 
 def lexpl(text):
@@ -278,6 +295,10 @@ def stmt_usingnamespace(text):
  tmp= _stmt_usingnamespace(text)
  return tmp and (('using namespace',token_space(' '+tmp[0][1])[1]),tmp[1])
 
+def stmt_class_protect(text):
+ tmp= pl_link(pl_orn(pl_const('public'),pl_const('private'),pl_const('protected')),token_spacen,pl_any_char(':'),token_spacen)(text)
+ return tmp and (tmp[0][0]+':',tmp[1])
+
 def stmt_dowhile(text):
  tmp= pl_link(\
        pl_const('do'),\
@@ -293,11 +314,12 @@ def stmt_dowhile(text):
 def stmt_other(text):
  tmp= pl_mult_until(token,pl_any_char(';{'))(text)
  if tmp==None: return None
+ flitedtmp= tuple(i for i in tmp[0] if len(i)!=0)
  if tmp[1].startswith(';'):
-  return (tmp[0]+(';',),tmp[1][1:])
+  return (flitedtmp+(';',),tmp[1][1:])
  elif tmp[1].startswith('{'):
   rbloc= bloc(tmp[1])
-  return rbloc and (tmp[0]+(rbloc[0],),token_spacen(' '+rbloc[1])[1])
+  return rbloc and (flitedtmp+(rbloc[0],),token_spacen(' '+rbloc[1])[1])
  else:
   return None
 
@@ -305,8 +327,8 @@ def bloc(text):
  if not text.startswith('{'): return None
  tmp= pl_mult_until(stmt,pl_any_char('}'))(text[1:])
  if tmp==None: return None
- nln= pl_link(pl_any_char('}'),pl_may(token_spacen))(tmp[1])
- return nln and (tmp[0],nln[1])
+ nln= pl_link(pl_any_char('}'),token_spacen)(tmp[1])
+ return nln and (tuple(i for i in tmp[0] if len(i)!=0),nln[1])
 
 '''TODO
 def stmt_if(text):
@@ -314,9 +336,10 @@ def stmt_if(text):
  tmp= pl_link(token_spacen)
 '''
 stmt= pl_orn(\
-  token_spacen,\
+  pl_ignore_data(pl_not_zero(token_spacen)),\
   stmt_define,\
   stmt_include,\
+  stmt_class_protect,\
   stmt_dowhile,\
   stmt_other,\
   bloc)
@@ -333,7 +356,7 @@ if __name__=='__main__':
  print('mult-until',pl_mult_until(pl_any_char('123'),pl_const('456'))('123321456'))
  print('comment',token_comment('/*123*/456'))
  print('comment',token_comment('//123\n456'))
- print('space*',pl_mult(token_spacen)(' //line1\n \t\t/*line2*/ 456'))
+ print('space*',token_spacen(' //line1\n \t\t/*line2*/ 456'))
  print('symbol',token_symbol('_as012df=self'))
  print('number',token_num('12.34e56E456'))
  print('number',token_num('0x123x456'))
@@ -348,7 +371,7 @@ if __name__=='__main__':
  print('token',pl_mult(token)('(abc+42)'))
  print('(exp)',lexpl('(abc+42)456'))
  print('stmt',stmt('#include<iostream> \n int a=0;'))
- print('final-test',pl_mult(stmt)(r'''
+ print('final-test',bloc(r'''{
 #include<typeinfo>
 #include<iostream>
 #include<string>
@@ -393,6 +416,6 @@ int main(int argc, char** argv){
  cout<< *my_hello_123::instance()<< endl;
  return 0;
 }
- '''))
+ }'''))
 
  

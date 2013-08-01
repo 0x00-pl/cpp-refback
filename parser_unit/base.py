@@ -327,7 +327,7 @@ def bloc(text):
  if not text.startswith('{'): return None
  tmp= pl_mult_until(stmt,pl_any_char('}'))(text[1:])
  if tmp==None: return None
- nln= pl_link(pl_any_char('}'),token_spacen)(tmp[1])
+ nln= pl_link(pl_any_char('}'),pl_ignore_data(token_spacen))(tmp[1])
  return nln and (tuple(i for i in tmp[0] if len(i)!=0),nln[1])
 
 '''TODO
@@ -344,6 +344,25 @@ stmt= pl_orn(\
   stmt_other,\
   bloc)
 
+
+def pretty_print(*node,prefix=''):
+ prev=0
+ if type(node) not in (tuple,list,map): raise TypeError('!'+str(type(node))+node)
+ print('(',end='')
+ for i in node:
+  if type(i) in (tuple,list,map):
+   if prev!=0:
+     print('\n'+prefix,end='')
+   prev=2
+   pretty_print(*i,prefix=prefix+' ')
+  else:
+   if prev==2:
+    print('\n'+prefix,end='')
+   elif prev==1:
+    print(' ',end='')
+   prev=1
+   print(i,end='')
+ print(')',end='')
 
 if __name__=='__main__':
  '''test case'''
@@ -371,7 +390,7 @@ if __name__=='__main__':
  print('token',pl_mult(token)('(abc+42)'))
  print('(exp)',lexpl('(abc+42)456'))
  print('stmt',stmt('#include<iostream> \n int a=0;'))
- print('final-test',bloc(r'''{
+ pretty_print('final-test',bloc(r'''{
 #include<typeinfo>
 #include<iostream>
 #include<string>

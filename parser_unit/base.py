@@ -119,6 +119,8 @@ def pl_ignore_data(fn):
 
 class Space(str): pass
 class Comment(Space): pass
+class ClassDecl(tuple):pass
+class TemplateClassDecl(tuple):pass
 
 def _link_str(tuple_):
  if isinstance(tuple_,(tuple,list)):

@@ -119,8 +119,25 @@ def pl_ignore_data(fn):
 
 class Space(str): pass
 class Comment(Space): pass
-class ClassDecl(tuple):pass
-class TemplateClassDecl(tuple):pass
+class Stmt(tuple):pass
+class Namespace(Stmt):
+ def name(self):
+  return self[1]
+
+class ClassDecl(Stmt):
+ def class_name(self):
+  return self[1]
+ 
+class TemplateClassDecl(Stmt):
+ name= ''
+ def class_name(self):
+  if name!='': return name
+  self.name= self[self.index('class')+1]
+ def templates(self):
+  raise "TODO"
+ def specialized(self):
+  raise "TODO"
+
 
 def _link_str(tuple_):
  if isinstance(tuple_,(tuple,list)):
@@ -136,6 +153,9 @@ def _prettyprint(rf):
   return None
  else:
   return (_link_str(rf[0]),rf[1])
+
+def _remove_empty_node(tuple_):
+ return tuple(i for i in tuple_ if i!=())
 
 '''token'''
 
@@ -276,6 +296,31 @@ def lexpl(text):
   else: print('ERROR: you may never go here')
 
 
+def token_type(text):
+ nm= token_symbol(text)
+ if nm==None: return None
+ tp= typelist(nm[1])
+ if tp==None: return ((nm[0],),nm[1])
+ return ((nm[0],tp[0]),token_spacen(tp[1])[1])
+
+def typelist(text):
+ if not text.startswith('<'): return None
+ ret=[]
+ iter=text[1:]
+ while True:
+  tp= token_type(iter)
+  if tp==None: return None
+  ret+= tp[0]
+  iter= token_spacen(tp[1])[1]
+  if iter.startswith(','):
+   iter= token_spacen(iter[1:])[1]
+  else:
+   break
+ if not iter.startswith('>'): return None
+ iter= token_spacen(iter[1:])[1]
+ return (tuple(ret),iter)
+
+
 '''stmt'''
 
 _stmt_define_unprettyprint= pl_link(pl_const('#define'),token_space,token_symbol,pl_may(pl_until(pl_any_char('\n'))),pl_any_char('\n'))
@@ -313,6 +358,19 @@ def stmt_dowhile(text):
        pl_may(token_spacen))(text)
  return tmp
 
+def stmt_class_decl(text):
+ t1= pl_const('class')(text)
+ if t1==None: return None
+ t2= token_symbol(token_spacen(t1[1])[1])
+ if t2==None: return None
+ t3= pl_mult_until(token,pl_any_char('{'))(t2[1])
+ if t3==None: return None
+ t4= bloc(t3[1])
+ if t4==None: return None
+ t5= pl_any_char(';')(token_spacen(t4[1])[1])
+ if t5==None: return None
+ return (ClassDecl(('class',t2[0],_remove_empty_node(t3[0]),t4[0],';')),token_spacen(t5[1])[1])
+
 def stmt_other(text):
  tmp= pl_mult_until(token,pl_any_char(';{'))(text)
  if tmp==None: return None
@@ -343,16 +401,19 @@ stmt= pl_orn(\
   stmt_include,\
   stmt_class_protect,\
   stmt_dowhile,\
+  stmt_class_decl,\
   stmt_other,\
   bloc)
 
 
 def pretty_print(*node,prefix=''):
  prev=0
- if type(node) not in (tuple,list,map): raise TypeError('!'+str(type(node))+node)
+ if not isinstance(node,(tuple,list,map)): 
+  print(type(node),node) 
+  raise TypeError
  print('(',end='')
  for i in node:
-  if type(i) in (tuple,list,map):
+  if isinstance(i,(tuple,list,map)):
    if prev!=0:
      print('\n'+prefix,end='')
    prev=2
@@ -392,6 +453,7 @@ if __name__=='__main__':
  print('token',pl_mult(token)('(abc+42)'))
  print('(exp)',lexpl('(abc+42)456'))
  print('stmt',stmt('#include<iostream> \n int a=0;'))
+ print('type',token_type('vector<map<int,int>> 456'))
  pretty_print('final-test',bloc(r'''{
 #include<typeinfo>
 #include<iostream>

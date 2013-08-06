@@ -129,15 +129,18 @@ class ClassDecl(Stmt):
   return self[1]
  
 class TemplateClassDecl(Stmt):
- name= ''
+ name=None
+ tmp=None
+ spe=None
  def class_name(self):
-  if name!='': return name
+  if name!=None: return name
   self.name= self[self.index('class')+1]
  def templates(self):
-  raise "TODO"
+  if tmp!=None: return tmp
+  self.tmp= self[self.index('template')+1]
  def specialized(self):
-  raise "TODO"
-
+  if spe!=None: return spe
+  self.spe= self[self.index('class')+2]
 
 def _link_str(tuple_):
  if isinstance(tuple_,(tuple,list)):
@@ -300,9 +303,10 @@ def token_type(text):
  nm= token_symbol(text)
  if nm==None: return None
  tp= typelist(nm[1])
- if tp==None: return ((nm[0],),nm[1])
+ if tp==None: return (nm[0],nm[1])
  return ((nm[0],tp[0]),token_spacen(tp[1])[1])
 
+''' not use
 def typelist(text):
  if not text.startswith('<'): return None
  ret=[]
@@ -316,6 +320,29 @@ def typelist(text):
    iter= token_spacen(iter[1:])[1]
   else:
    break
+ if not iter.startswith('>'): return None
+ iter= token_spacen(iter[1:])[1]
+ return (tuple(ret),iter)
+'''
+
+def typelist(text):
+ if not text.startswith('<'): return None
+ ret=[]
+ iter=text[1:]
+ while True:
+  dc= token_type(iter)
+  if dc==None: break
+  iter= token_spacen(dc[1])[1]
+  tp= token_type(iter)
+  if tp!=None:
+   ret+= (dc[0],tp[0])
+   iter= token_spacen(tp[1])[1]
+  else:
+   ret+= [dc[0]]
+   iter= token_spacen(dc[1])[1]
+  if iter.startswith(','):
+   iter= token_spacen(iter[1:])[1]
+
  if not iter.startswith('>'): return None
  iter= token_spacen(iter[1:])[1]
  return (tuple(ret),iter)
@@ -369,7 +396,27 @@ def stmt_class_decl(text):
  if t4==None: return None
  t5= pl_any_char(';')(token_spacen(t4[1])[1])
  if t5==None: return None
- return (ClassDecl(('class',t2[0],_remove_empty_node(t3[0]),t4[0],';')),token_spacen(t5[1])[1])
+ return (ClassDecl(('class',t2[0],_remove_empty_node(t3[0]),t4[0])),token_spacen(t5[1])[1])
+
+
+def stmt_template_class_decl(text):
+ kw1= pl_const('template')(text)
+ if kw1==None: return None
+ Tlst1= typelist(token_spacen(kw1[1])[1])
+ if Tlst1==None: return None
+ kw2= pl_const('class')(token_spacen(Tlst1[1])[1])
+ if kw2==None: return None
+ clsname= token_symbol(token_spacen(kw2[1])[1])
+ if clsname==None: return None
+ Tlst2= typelist(token_spacen(clsname[1])[1])
+ if Tlst2==None: Tlst2=((),token_spacen(clsname[1])[1])
+ basecls= pl_mult_until(token,pl_any_char('{'))(Tlst2[1])
+ if basecls==None: return None
+ clsdef= bloc(basecls[1])
+ if clsdef==None: return None
+ kw3= pl_any_char(';')(token_spacen(clsdef[1])[1])
+ if kw3==None: return None
+ return (TemplateClassDecl(('template',Tlst1[0],'class',clsname[0],Tlst2[0],_remove_empty_node(basecls[0]),clsdef[0])),token_spacen(kw3[1])[1])
 
 def stmt_other(text):
  tmp= pl_mult_until(token,pl_any_char(';{'))(text)
@@ -402,6 +449,7 @@ stmt= pl_orn(\
   stmt_class_protect,\
   stmt_dowhile,\
   stmt_class_decl,\
+  stmt_template_class_decl,\
   stmt_other,\
   bloc)
 

@@ -123,24 +123,38 @@ class Stmt(tuple):pass
 class Namespace(Stmt):
  def name(self):
   return self[1]
+ def bloc(self):
+  return self[2]
 
-class ClassDecl(Stmt):
+class ClassDecl(tuple):
+ args=('class','name','base','bloc')
+ def decl(self):
+  return 'class '+self.__dict__.get('prefix','')+self.class_name();
  def class_name(self):
-  return self[1]
+  return self[self.args.index('name')]
+ def bloc(self):
+  return self[self.args.index('bloc')]
  
 class TemplateClassDecl(Stmt):
  name=None
  tmp=None
  spe=None
+ def decl(self):
+  return 'class '+str(self.templates())+' '+self.__dict__.get('prefix','')+self.class_name()+' '+str(self.specialized())
  def class_name(self):
-  if name!=None: return name
-  self.name= self[self.index('class')+1]
+  if self.name==None: 
+   self.name= self[self.index('class')+1]
+  return self.name
  def templates(self):
-  if tmp!=None: return tmp
-  self.tmp= self[self.index('template')+1]
+  if self.tmp==None:
+   self.tmp= self[self.index('template')+1]
+  return self.tmp
  def specialized(self):
-  if spe!=None: return spe
-  self.spe= self[self.index('class')+2]
+  if self.spe==None:
+   self.spe= self[self.index('class')+2]
+  return self.spe
+ def bloc(self):
+  return self[self.index('class')+4]
 
 def _link_str(tuple_):
  if isinstance(tuple_,(tuple,list)):
@@ -430,6 +444,10 @@ def stmt_other(text):
  else:
   return None
 
+def stmt_namespace(text):
+ tmp= pl_link(pl_const('namespace'),token_spacen,token_symbol,token_spacen,bloc)(text)
+ return tmp and (Namespace(('namespace',str(tmp[0][2]),tmp[0][4])),tmp[1])
+
 def bloc(text):
  if not text.startswith('{'): return None
  tmp= pl_mult_until(stmt,pl_any_char('}'))(text[1:])
@@ -448,6 +466,7 @@ stmt= pl_orn(\
   stmt_include,\
   stmt_class_protect,\
   stmt_dowhile,\
+  stmt_namespace,\
   stmt_class_decl,\
   stmt_template_class_decl,\
   stmt_other,\
@@ -474,6 +493,17 @@ def pretty_print(*node,prefix=''):
    prev=1
    print(i,end='')
  print(')',end='')
+
+def get_classdecl(file_root,prefix='::'):
+ ret=[]
+ for iter in file_root:
+  if type(iter) == Namespace:
+   ret+=get_classdecl(iter.bloc(),prefix+iter.name()+'::')
+  if type(iter) in (ClassDecl,TemplateClassDecl):
+   iter.prefix=prefix
+   ret+=[iter]
+   ret+=get_classdecl(iter.bloc(),prefix+iter.class_name()+'::')
+ return tuple(ret)
 
 if __name__=='__main__':
  '''test case'''
@@ -502,7 +532,7 @@ if __name__=='__main__':
  print('(exp)',lexpl('(abc+42)456'))
  print('stmt',stmt('#include<iostream> \n int a=0;'))
  print('type',token_type('vector<map<int,int>> 456'))
- pretty_print('final-test',bloc(r'''{
+ final_test= bloc(r'''{
 #include<typeinfo>
 #include<iostream>
 #include<string>
@@ -513,7 +543,7 @@ using namespace std;
 comment
 //comment*/
 //comment/*
-
+namespace my{
 template<typename T>
 class my_hello{
 public:
@@ -547,6 +577,10 @@ int main(int argc, char** argv){
  cout<< *my_hello_123::instance()<< endl;
  return 0;
 }
- }'''))
+}
+ }''')
+ pretty_print('final-test',final_test)
+ print('classes:')
+ [print('+++',i.decl()) for i in get_classdecl(final_test[0])]
 
  

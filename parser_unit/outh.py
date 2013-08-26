@@ -11,13 +11,14 @@ def gen_file(filename):
   file_analize= base.bloc('{'+text+'}')[0]
  with open('decl'+filename,mode='w') as fout:
   fout.write(file_head(filename))
-  [gen_class(i.decl()) for i in base.get_classdecl(file_analize)]
+  [fout.write(gen_class(i)+'\n') for i in base.get_classdecl(file_analize)]
  
 def gen_class(decl):
- if type(decl)==ClassDecl:
+ print(type(decl),decl)
+ if type(decl)==base.ClassDecl:
   return 'class '+decl.class_name();
- if type(decl)==TemplateClassDecl:
-  return 'template<'+decl.templates()+'> class '+decl.class_name()+'<'+decl.specialized()+'>'
+ if type(decl)==base.TemplateClassDecl:
+  return 'template<'+' '.join(decl.templates())+'> class '+decl.class_name()+'<'+' '.join(decl.specialized())+'>'
  return 'Error: not class'
  
 def gen_func(decl):

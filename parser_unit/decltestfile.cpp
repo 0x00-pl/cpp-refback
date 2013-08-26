@@ -10,3 +10,6 @@ public:
  }  
 };
 
+template<typename T> class my_hello<>
+template<> class my_hello<string>
+class my_hello_123

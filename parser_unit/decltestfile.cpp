@@ -10,6 +10,6 @@ public:
  }  
 };
 
-template<typename T> class my_hello<>
-template<> class my_hello<string>
-class my_hello_123
+template<typename T> class my_hello<>{('my_hello', 'get', 'name')}
+template<> class my_hello<string>{('my_hello', 'get', 'name')}
+class my_hello_123{('my_hello_123', 'get', 'instance')}

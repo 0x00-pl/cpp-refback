@@ -117,6 +117,26 @@ def pl_ignore_data(fn):
  return ret
 
 
+def get_bloc_mem_name(arr):
+ return tuple([j for j in [get_decl_name(i) for i in arr] if j!=None])
+  
+def get_decl_name(i):
+ try:
+  if(i[-1]==';'):
+   if(type(i[-2])==str): return i[-2]
+   return None
+  elif(i[0]=='operator'):
+   return None
+  elif(i[-2]==')'):
+   sp= i.index('(')-1
+   if(type(i[sp])==str): return i[sp]
+   return None
+ except IndexError:
+  return None
+ except ValueError:
+  return None
+ return None
+
 class Space(str): pass
 class Comment(Space): pass
 class Stmt(tuple):pass

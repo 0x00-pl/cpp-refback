@@ -14,18 +14,17 @@ def gen_file(filename):
   [fout.write(gen_class(i)+'\n') for i in base.get_classdecl(file_analize)]
  
 def gen_class(decl):
- print(type(decl),decl)
+ #base.pretty_
+ print(decl.bloc())
+ print(len(decl.bloc()))
  if type(decl)==base.ClassDecl:
-  return 'class '+decl.class_name();
+  return 'class '+decl.class_name()+'{'+gen_member(decl.bloc())+'}'
  if type(decl)==base.TemplateClassDecl:
-  return 'template<'+' '.join(decl.templates())+'> class '+decl.class_name()+'<'+' '.join(decl.specialized())+'>'
+  return 'template<'+' '.join(decl.templates())+'> class '+decl.class_name()+'<'+' '.join(decl.specialized())+'>'+'{'+gen_member(decl.bloc())+'}'
  return 'Error: not class'
  
-def gen_func(decl):
- return 'void func();'
-
 def gen_member(decl):
- return 'int a';
+ return str(base.get_bloc_mem_name(decl));
 
 
 '''---'''

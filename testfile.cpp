@@ -1,7 +1,12 @@
+
+#ifndef TEST_FILE_CPP
+#define TEST_FILE_CPP
 #include<typeinfo>
 #include<iostream>
 #include<string>
 using namespace std;
+
+#include"decl.h"
 
 /*//comment//*/
 /*commen
@@ -29,16 +34,23 @@ class my_hello_123: public my_hello<string>{
 public:
  my_hello_123():my_hello("world"){}
  virtual const string& get(){
-  return string("hello ")+my_hello::get();
+  mystring= string("hello ")+my_hello::get();
+  return mystring;
  }
+ string mystring;
  static my_hello_123* instance(){
   static my_hello_123* _ins=0;
-  if(!_ins){ins=new my_hello_123();}
+  if(!_ins){_ins=new my_hello_123();}
   return _ins;
  }
 };
 
+#include"decltestfile.cpp"
+
 int main(int argc, char** argv){
- cout<< *my_hello_123::instance()<< endl;
+ cout<< string(*my_hello_123::instance())<< endl;
+ cout<<(my_hello_123::instance())->*(refback<my_hello_123>::member<string>("mystring"))<<endl;
  return 0;
 }
+
+#endif

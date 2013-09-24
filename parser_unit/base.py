@@ -129,7 +129,7 @@ def get_decl_name(i):
    return None
   elif(i[-2]==')'):
    sp= i.index('(')-1
-   if(type(i[sp])==str): return i[sp]
+   if(type(i[sp])==str and sp!=0): return i[sp]
    return None
  except IndexError:
   return None
@@ -390,6 +390,11 @@ def stmt_define(text):
  tmp= _stmt_define_unprettyprint(text)
  return tmp and (('#define',tmp[0][2],token_space(' '+tmp[0][3])[1]),tmp[1])
 
+def stmt_sharp(text):
+ tmp= pl_link(pl_any_char('#'),pl_until(pl_any_char('\n')),pl_any_char('\n'))(text)
+ return tmp
+
+
 _stmt_include_unprettyprint= pl_link(pl_const('#include'),pl_until(token_newline),token_newline)
 _stmt_include_unprettyprint.__doc__=r'#include .* newline'
 def stmt_include(text):
@@ -484,6 +489,7 @@ stmt= pl_orn(\
   pl_ignore_data(pl_not_zero(token_spacen)),\
   stmt_define,\
   stmt_include,\
+  stmt_sharp,\
   stmt_class_protect,\
   stmt_dowhile,\
   stmt_namespace,\

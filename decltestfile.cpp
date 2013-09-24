@@ -1,6 +1,6 @@
 
-#ifndef UUID_0da92a1e_cfb3_42b2_ba82_53387b17dc3a
-#define UUID_0da92a1e_cfb3_42b2_ba82_53387b17dc3a
+#ifndef UUID_31da3618_73f7_444f_886a_4e780bac3c6a
+#define UUID_31da3618_73f7_444f_886a_4e780bac3c6a
 #include <typeinfo>
 #include "testfile.cpp"
 #include "decl.h"
